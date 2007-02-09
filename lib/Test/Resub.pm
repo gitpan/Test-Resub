@@ -13,7 +13,7 @@ use Carp qw(croak);
 use Class::Std;
 
 our @EXPORT_OK = qw(resub);
-our $VERSION = '1.00';
+our $VERSION = '1.01';
 
 my %name :ATTR( :init_arg<name> );
 my %capture :ATTR( :init_arg<capture>, :default(0) );
@@ -238,17 +238,17 @@ must get called, must not get called, or may be optionally called.
 
 =head1 CONSTRUCTOR
 
-my $rs = resub 'package::method', sub { ... }, %args;
+    my $rs = resub 'package::method', sub { ... }, %args;
 
 is equivalent to:
 
-my $rs = Test::Resub->new(
-  name => 'package::method',
-  code => sub { ... },
-  %args,
-);
+    my $rs = Test::Resub->new(
+      name => 'package::method',
+      code => sub { ... },
+      %args,
+    );
 
-%args can be any of the following named arguments:
+C<%args> can be any of the following named arguments:
 
 =over 4
 
@@ -344,6 +344,7 @@ Examples:
 
 The C<arg_start_index> argument specifes that a certain number of
 arguments are to be discarded. For example:
+
   my $rs = resub 'some_sub';
   ...
   some_sub('one', 'two', a => 1, b => 2);
@@ -367,7 +368,7 @@ arguments precede the key/value arguments.  For example:
   # returns [3306, {a => 'b', c => 123},
   #          9158, {a => 'z', c => 456}]
 
-Note that C<named_args(scalars => N)> will yield N scalars plus one hashref
+Note that C<named_args(scalars =E<gt> N)> will yield N scalars plus one hashref
 per call regardless of how many arguments were passed to the
 subroutine/method. For example:
 
