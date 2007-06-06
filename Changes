@@ -1,5 +1,7 @@
 Revision history for Test-Resub
 
-0.01    Date/time
-        First version, released on an unsuspecting world.
+1.02    Remove stale proprietary-license text. (Spotted by Joe Arnold)
+        To clarify, this module is released under the same terms as Perl itself.
+1.01    Documentation fixes
+1.00    Initial release
 

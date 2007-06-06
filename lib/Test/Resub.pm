@@ -1,9 +1,6 @@
 # Copyright (c) 2001-2006, AirWave Wireless, Inc.
-# This material contains trade secrets and confidential information of AirWave
-# Wireless, Inc.
-# Any use, reproduction, disclosure or dissemination is strictly prohibited
-# without the explicit written permission of AirWave Wireless, Inc.
-# All rights reserved.
+# This library is free software; you can redistribute it and/or modify it
+# under the same terms as Perl itself.
 
 use strict;
 package Test::Resub;
@@ -13,7 +10,7 @@ use Carp qw(croak);
 use Class::Std;
 
 our @EXPORT_OK = qw(resub);
-our $VERSION = '1.01';
+our $VERSION = '1.02';
 
 my %name :ATTR( :init_arg<name> );
 my %capture :ATTR( :init_arg<capture>, :default(0) );

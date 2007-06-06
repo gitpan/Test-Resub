@@ -1,10 +1,4 @@
 #!/usr/bin/perl -w
-# Copyright (c) 2001-2006, AirWave Wireless, Inc.
-# This material contains trade secrets and confidential information of AirWave
-# Wireless, Inc.
-# Any use, reproduction, disclosure or dissemination is strictly prohibited
-# without the explicit written permission of AirWave Wireless, Inc.
-# All rights reserved.
 
 use strict;
 
