@@ -1,4 +1,4 @@
-# Copyright (c) 2001-2006, AirWave Wireless, Inc.
+# Copyright (c) 2001-2008, Aruba Networks, Inc.
 # This library is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 
@@ -8,13 +8,22 @@ use base qw(Exporter);
 
 use Carp qw(croak);
 use Class::Std;
+use Storable qw(dclone);
+BEGIN {
+  local $@;
+  eval { require Scalar::Util; Scalar::Util->import(qw(set_prototype)); };
+  if ($@) {
+    *set_prototype = sub { $_[0] };
+  }
+}
 
 our @EXPORT_OK = qw(resub);
-our $VERSION = '1.02';
+our $VERSION = '1.03';
 
 my %name :ATTR( :init_arg<name> );
 my %capture :ATTR( :init_arg<capture>, :default(0) );
 my %call_mode :ATTR( :init_arg<call>, :default('required') );
+my %deep_copy :ATTR( :init_arg<deep_copy>, :default(1) ); 
 my %old_method :ATTR;
 my %new_method :ATTR;
 my %called :ATTR( :default(0) );
@@ -31,6 +40,15 @@ sub resub {
 }
 
 sub default_replacement_sub { sub {} }
+
+sub _get_prototype_safely {
+  my ($func) = @_;
+  return undef unless defined $func;
+  my $prototype;
+  local $@;
+  eval { $prototype = prototype $func };
+  return $prototype;
+}
 
 sub BUILD {
   my ($self, $ident, $args) = @_;
@@ -49,6 +67,15 @@ sub BUILD {
       $call_mode, (join q{, }, sort keys %is_valid));
   }
 
+  my ($package, $func) = _split_package_method($method);
+  if ((not UNIVERSAL::can($package, $func)) && (not $args->{create})) {
+    croak sprintf(q{Package %s doesn't have a %s; Test::Resub will not create}
+      . q{ a method without the 'create' flag.},
+      $package,
+      $func,
+    );
+  }
+
   $new_method{$ident} = $code;
   $method_args{$ident} = [];
 }
@@ -56,20 +83,30 @@ sub BUILD {
 sub START {
   my ($self, $ident, $args) = @_;
 
-  my $wrapper_code = sub {
+  my $method = $name{$ident};
+
+  my $wrapper_code = set_prototype(sub {
     $called{$ident}++;
     $was_called{$ident}++;
-    push @{$method_args{$ident}}, [@_] if $capture{$ident};
+
+    if ($capture{$ident}) {
+      local $Storable::Deparse = 1;
+      local $Storable::Eval = 1;
+      my $saved_args = $deep_copy{$ident} ? dclone([@_]) : [@_];
+      push @{$method_args{$ident}}, $saved_args;
+    }
+
     return $new_method{$ident}->(@_);
-  };
+  }, _get_prototype_safely($method));
   {
     no strict 'refs';
     no warnings 'redefine';
-    my $method = $name{$ident};
-    my $orig_data = save_variables($method);
-    $old_method{$ident} = defined *$method{CODE} ? \&$method : undef;
+    my $orig_data = _save_variables($method);
+    if (defined *$method{CODE}) {
+      $old_method{$ident} = \&$method;
+    }
     *$method = $wrapper_code;
-    restore_variables($method, $orig_data);
+    _restore_variables($method, $orig_data);
   }
 }
 
@@ -82,6 +119,7 @@ sub DEMOLISH {
   if ( ($call_mode{$ident} eq 'forbidden' and $was_called) ||
       ($call_mode{$ident} eq 'required' and not $was_called) ) {
     print "not ok 1000\n";
+    local $Carp::CarpLevel = $Carp::CarpLevel + 1;
     print '# ' . $method . ' ' .
       ($was_called ? 'called' : 'not called') . "\n" .
         Carp::longmess;
@@ -91,14 +129,14 @@ sub DEMOLISH {
     no strict 'refs';
     no warnings 'redefine';
 
-    my $existing_data = save_variables($method);
+    my $existing_data = _save_variables($method);
     if (not defined $old_method{$ident}) {
-      my ($package, $name) = $self->split_package_method($method);
+      my ($package, $name) = _split_package_method($method);
       delete ${ "$package\::" }{$name};
     } else {
       *$method = $old_method{$ident};
     }
-    restore_variables($method, $existing_data);
+    _restore_variables($method, $existing_data);
   }
 }
 
@@ -164,7 +202,7 @@ sub _named_things {
   ]; 
 }
 
-sub save_variables {
+sub _save_variables {
   my ($varname) = @_;
   no strict 'refs';
   return {
@@ -174,7 +212,7 @@ sub save_variables {
   };
 }
 
-sub restore_variables {
+sub _restore_variables {
   my ($varname, $data) = @_;
   no strict 'refs';
   $$varname = $data->{scalar};
@@ -182,8 +220,8 @@ sub restore_variables {
   %$varname = %{$data->{hash}};
 }
 
-sub split_package_method {
-  my ($self, $method) = @_;
+sub _split_package_method {
+  my ($method) = @_;
 
   my ($package, $name) = $method =~ /^(.+)::([^:]+)$/;
   
@@ -286,6 +324,21 @@ your tests should know whether or not a subroutine/method is going to get
 called, so avoid using this option if you can.
 
 =back
+
+=item B<create>
+
+Boolean which indicates whether or not a function will be created if none
+exists. If the package can't resolve the method
+(i.e. ! UNIVERSAL::can($package, $method)), then an exception will be thrown
+unless 'create' is true. Defaults to false.
+
+This is mainly useful to catch typos.
+
+=item B<deep_copy>
+
+Whether or not to make a deep copy of saved-off arguments. Default is 1.
+Normally, one wants deep copies, but there is an associated performance
+penalty, e.g. for large objects.
 
 =back
 

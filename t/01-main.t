@@ -2,7 +2,7 @@
 
 use strict;
 
-use Test::More tests => 56;
+use Test::More tests => 60;
 
 # We need IO::Capture::Std(out|err) only for this test, so rather than
 # make the user install it for us, we have a copy for use in testing
@@ -45,15 +45,15 @@ sub stdout_of { return _std_of('IO::Capture::Stdout', @_) }
       name => "TestResub::resub_me2",
       code => sub { $msg },
     });
-    ok( $resub->not_called );
+    ok( $resub->not_called, 'start out uncalled' );
 
     is( TestResub::resub_me2(), $msg );
-    is( $resub->called, 1 );
-    ok( not $resub->not_called );
+    is( $resub->called, 1, 'call counter increments' );
+    ok( ! $resub->not_called, 'no longer uncalled' );
 
     # increment called counter
     TestResub::resub_me2();
-    is( $resub->called, 2 );
+    is( $resub->called, 2, 'call counter increments again' );
 
     # reset should reset the called counter, not the was_called flag
     $resub->reset;
@@ -75,7 +75,7 @@ sub stdout_of { return _std_of('IO::Capture::Stdout', @_) }
         name => "TestResub::resub_me2",
         code => sub { 'two' },
       });
-      is( TestResub::resub_me2(), 'two' );
+      is( TestResub::resub_me2(), 'two', 'can reresub');
     }
     is( TestResub::resub_me2(), $orig_msg );
   }
@@ -194,6 +194,21 @@ sub stdout_of { return _std_of('IO::Capture::Stdout', @_) }
     like( $@, qr/bad method name/i );
   }
 
+  # won't resub things into existence without create flag
+  {
+    local $@;
+    eval {
+      my $rs = resub "TestResub::kinks_Flourtown";
+    };
+    like( $@,
+      qr/Package TestResub doesn't have a kinks_Flourtown.*'create' flag/,
+      "Don't create nonexistent functions unless told to",
+    );
+
+    my $rs = resub "TestResub::countersunk_hilltopped", sub { 2336 }, create => 1;
+    is( TestResub->countersunk_hilltopped(), 2336 );
+  }
+
   # error when passing bad 'call' argument
   {
     local $@;
@@ -239,6 +254,7 @@ sub stdout_of { return _std_of('IO::Capture::Stdout', @_) }
     my $rs3 = Test::Resub->new({
       name => 'TestChild::dont_exist',
       code => sub { 22 },
+      create => 1,
     });
 
     # this next test is important; it used to break.
@@ -270,7 +286,9 @@ sub stdout_of { return _std_of('IO::Capture::Stdout', @_) }
       name => 'TestChild::base_method',
       code => sub { },
     });
-    like( stdout_of(sub{ undef $rs }), qr/not ok 1000/ );
+    my $output = stdout_of(sub { undef $rs });
+    like( $output, qr/not ok 1000/, q{not ok 1000 if not called} );
+    unlike( $output, qr/Class::Std/, q{don't have any Class::Std stuff in the longmess} );
 
     $rs = Test::Resub->new({
       name => 'TestChild::base_method',
@@ -390,10 +408,22 @@ sub stdout_of { return _std_of('IO::Capture::Stdout', @_) }
     name => 'main::eternalised',
     code => sub { $_[0] = 88 },
     capture => 1,
+    create => 1,
   });
 
   my $arg = 'sagittiform';
   eternalised($arg);
 
   is_deeply( $rs->args, [['sagittiform']] );  # Not 88!
+}
+
+# Coderefs can be captured
+{
+  my $rs = Test::Resub->new({
+    name => 'main::some_random_function',
+    create => 1,
+    capture => 1,
+  });
+  some_random_function(sub {});
+  is( ref($rs->args->[0][0]), 'CODE', 'saved a coderef' );
 }
