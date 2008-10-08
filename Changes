@@ -1,5 +1,7 @@
 Revision history for Test-Resub
 
+1.04    Cleanup of error messages: our croak()s no longer look like they come
+        from within Class::Std.
 1.03    Workarounds for perl 5.8.0 to allow basic functionality.
         Match prototypes; should eliminate prototype-mismatch warnings.
         Don't create functions without the 'create' flag.

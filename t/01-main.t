@@ -1,8 +1,9 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 use strict;
+use warnings;
 
-use Test::More tests => 60;
+use Test::More tests => 63;
 
 # We need IO::Capture::Std(out|err) only for this test, so rather than
 # make the user install it for us, we have a copy for use in testing
@@ -191,7 +192,8 @@ sub stdout_of { return _std_of('IO::Capture::Stdout', @_) }
     eval {
       my $rs = Test::Resub->new({name => 'Hello->world', code => sub { 1 }});
     };
-    like( $@, qr/bad method name/i );
+    like( $@, qr/bad method name/i, 'catch bad method names' );
+    like( $@, qr/01-main/, "error is from caller's perspective" );
   }
 
   # won't resub things into existence without create flag
@@ -324,7 +326,10 @@ sub stdout_of { return _std_of('IO::Capture::Stdout', @_) }
       call => 'forbidden',
     });
     TestChild->base_method();
-    like( stdout_of(sub{ undef $rs }), qr/not ok 1000/ );
+    my $output = stdout_of(sub{ undef $rs });
+    like( $output, qr/not ok 1000/ );
+    unlike( $output, qr/Test::Resub/ );
+    unlike( $output, qr/Class::Std/ );
   }
 
   # we don't fail if uncalled and we've declared calling optional

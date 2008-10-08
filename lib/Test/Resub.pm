@@ -3,6 +3,7 @@
 # under the same terms as Perl itself.
 
 use strict;
+use warnings;
 package Test::Resub;
 use base qw(Exporter);
 
@@ -18,7 +19,7 @@ BEGIN {
 }
 
 our @EXPORT_OK = qw(resub);
-our $VERSION = '1.03';
+our $VERSION = '1.04';
 
 my %name :ATTR( :init_arg<name> );
 my %capture :ATTR( :init_arg<capture>, :default(0) );
@@ -53,6 +54,8 @@ sub _get_prototype_safely {
 sub BUILD {
   my ($self, $ident, $args) = @_;
 
+  local $Carp::Internal{'Class::Std'} = 1;
+  local $Carp::Internal{ do {__PACKAGE__} } = 1;
   my $code = $args->{code} || $self->default_replacement_sub;
 
   my $method = $args->{name};
