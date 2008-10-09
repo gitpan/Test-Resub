@@ -19,7 +19,7 @@ BEGIN {
 }
 
 our @EXPORT_OK = qw(resub);
-our $VERSION = '1.04';
+our $VERSION = '1.05';
 
 my %name :ATTR( :init_arg<name> );
 my %capture :ATTR( :init_arg<capture>, :default(0) );
@@ -276,15 +276,17 @@ must get called, must not get called, or may be optionally called.
 
 =head1 CONSTRUCTOR
 
+    use Test::Resub qw(resub);
     my $rs = resub 'package::method', sub { ... }, %args;
 
 is equivalent to:
 
-    my $rs = Test::Resub->new(
+    use Test::Resub;
+    my $rs = Test::Resub->new({
       name => 'package::method',
       code => sub { ... },
       %args,
-    );
+    });
 
 C<%args> can be any of the following named arguments:
 

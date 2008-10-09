@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Test-Resub
-version:             1.04
+version:             1.05
 abstract:            Lexically scoped subroutine replacement for testing
 license:             ~
 author:              
