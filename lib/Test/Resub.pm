@@ -19,7 +19,7 @@ BEGIN {
 }
 
 our @EXPORT_OK = qw(resub);
-our $VERSION = '1.05';
+our $VERSION = '1.06';
 
 my %name :ATTR( :init_arg<name> );
 my %capture :ATTR( :init_arg<capture>, :default(0) );
@@ -165,6 +165,25 @@ sub reset {
   $method_args{$ident} = [];
 }
 
+sub make_key {
+  my ($item) = @_;
+
+  my $ref = ref($item);
+  return $item unless $ref;
+
+  return $$item if $ref eq 'SCALAR';
+  return join ',', map { make_key($_) } @$item if $ref eq 'ARRAY';
+  return join ',', map { $_ => make_key($item->{$_}) } sort keys %$item if $ref eq 'HASH';
+  return $ref; # hokey; all objects of same class get treated as same thing
+}
+
+sub unique {
+  my (@list) = @_;
+  my %seen;
+  return grep { my $key = make_key($_); ! $seen{$key}++ } @list;
+}
+
+sub unique_args { return unique @{shift->args} }
 sub args {
   my ($self) = @_;
   my $ident = ident $self;
@@ -173,6 +192,7 @@ sub args {
   return $method_args{$ident};
 }
 
+sub unique_named_args { return unique @{shift->named_args} }
 sub named_args {
   my ($self, %args) = @_;
   return $self->_named_things(
@@ -181,12 +201,14 @@ sub named_args {
   );
 }
 
+sub unique_method_args { return unique @{shift->method_args} }
 sub method_args {
   my ($self) = @_;
   my $args = $self->args;
   return [map { my @tmp = @$_; shift @tmp; \@tmp } @$args];
 }
 
+sub unique_named_method_args { return unique @{shift->named_method_args} }
 sub named_method_args {
   my ($self, %args) = @_;
   return $self->_named_things(
@@ -380,6 +402,20 @@ Returns data on how the replaced subroutine/method was invoked.  Examples:
     foo('a');                                [['a']]
     foo('a', 'b'); foo('d');                 [['a', 'b'], ['d']]
 
+=item B<unique_args>
+
+Similar to C<args>, but only returns unique argument calls. Given:
+
+   foo('a', 'b');
+   foo(1, 2);
+   foo('a', 'b');
+
+C<unique_args> returns:
+
+   [['a', 'b'], [1, 2]];
+
+Objects of the same class are considered the same object.
+
 =item B<named_args>
 
 Like C<args>, but each invocation's arguments are returned in a hashref.
@@ -436,6 +472,10 @@ subroutine/method. For example:
   # returns ['one argument only', undef, {},
   #          'many', 'arguments', {a => 1, b => 2}]
 
+=item B<unique_named_args>
+
+The C<named_args> version of C<unique_args>
+
 =item B<method_args>
 
 Like C<args>, but the first argument of each invocation is thrown away.
@@ -448,6 +488,10 @@ object or class argument.  Examples:
     (none)                                   []
     $obj->foo('a');                          [['a']]
     Class->foo('a', 'b'); Class->foo('d');   [['a', 'b'], ['d']]
+
+=item B<unique_method_args>
+
+The C<method_args> version of C<unique_args>
 
 =item B<named_method_args>
 
@@ -490,6 +534,10 @@ C<arg_start_index> parameter is applied. That is,
   ...
   $rs->named_method_args(arg_start_index => 1);
   # returns [{b => 2}]
+
+=item B<unique_named_method_args>
+
+The C<named_method_args> version of C<unique_args>
 
 =back
 
