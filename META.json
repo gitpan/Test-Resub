@@ -4,7 +4,7 @@
       "Belden Lyman <belden@cpan.org>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "ExtUtils::MakeMaker version 6.6302, CPAN::Meta::Converter version 2.120630",
+   "generated_by" : "ExtUtils::MakeMaker version 6.96, CPAN::Meta::Converter version 2.140640",
    "license" : [
       "unknown"
    ],
@@ -48,5 +48,5 @@
          "url" : "git://github.com/belden/test-resub.git"
       }
    },
-   "version" : "2.02"
+   "version" : "2.03"
 }
